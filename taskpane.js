@@ -145,7 +145,6 @@ async function processChange(event) {
 
         if (triggerHasValue && !timestampHasValue && !timestampHasFormula) {
           const cell = sheet.getCell(segment.start + offset, CONFIG.timestampColumnIndex);
-          cell.numberFormat = [["yyyy-mm-dd hh:mm:ss"]];
           cell.values = [[timestampSerial]];
         }
       }
