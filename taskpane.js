@@ -127,7 +127,10 @@ async function processChange(event) {
 
     await context.sync();
 
-    const timestamp = dominicanTimestamp(new Date());
+    // Excel stores real dates as numeric OLE Automation date values.
+    // Build the serial from Dominican Republic wall-clock time so the cell
+    // remains usable in sorting, filtering, formulas, and date arithmetic.
+    const timestampSerial = dominicanExcelSerial(new Date());
 
     for (const segment of loadedSegments) {
       const triggerValues = segment.triggerRange.values;
@@ -142,8 +145,8 @@ async function processChange(event) {
 
         if (triggerHasValue && !timestampHasValue && !timestampHasFormula) {
           const cell = sheet.getCell(segment.start + offset, CONFIG.timestampColumnIndex);
-          cell.numberFormat = [["@"]];
-          cell.values = [[timestamp]];
+          cell.numberFormat = [["yyyy-mm-dd hh:mm:ss"]];
+          cell.values = [[timestampSerial]];
         }
       }
     }
@@ -184,7 +187,7 @@ function isBlank(value) {
   return value === null || value === undefined || String(value).trim() === "";
 }
 
-function dominicanTimestamp(date) {
+function dominicanExcelSerial(date) {
   const formatter = new Intl.DateTimeFormat("en-CA", {
     timeZone: CONFIG.timeZone,
     year: "numeric",
@@ -202,7 +205,17 @@ function dominicanTimestamp(date) {
       .map((part) => [part.type, part.value])
   );
 
-  return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}:${parts.second}`;
+  const dominicanWallClockAsUtc = Date.UTC(
+    Number(parts.year),
+    Number(parts.month) - 1,
+    Number(parts.day),
+    Number(parts.hour),
+    Number(parts.minute),
+    Number(parts.second)
+  );
+
+  // Excel's standard 1900 date system uses 1899-12-30 as serial zero.
+  return dominicanWallClockAsUtc / 86400000 + 25569;
 }
 
 async function tryEnableAutomaticStartup() {
